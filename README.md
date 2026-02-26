@@ -31,4 +31,3 @@ Progetto bot x slack; RAG su KB Coda
 | **`pyproject.toml`** | Configurazione Progetto Poetry |
 | **`poetry.lock`** | Dependencies Progetto Poetry |
 | **`README.md`** | Specifiche |
-
