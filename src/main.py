@@ -1,9 +1,10 @@
+from src.rag_engine import ask_bot, load_knowledge_base
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from slack_bolt import App
 from slack_bolt.adapter.fastapi import SlackRequestHandler
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_cohere import ChatCohere, CohereEmbeddings
 
 # 1. Carica le variabili d'ambiente dal file .env
 load_dotenv()
@@ -18,10 +19,10 @@ slack_handler = SlackRequestHandler(slack_app)
 # 3. Inizializza FastAPI (Il server web che ascolterà Slack)
 api_app = FastAPI()
 
-# 4. Inizializza il modello AI (Google Gemini Gratuito)
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    google_api_key=os.environ.get("GOOGLE_API_KEY")
+# 4. Inizializza il modello AI (Cohere)
+llm = ChatCohere(
+    model="command-r-plus-08-2024",
+    cohere_api_key=os.environ.get("COHERE_API_KEY")
 )
 
 
@@ -35,24 +36,18 @@ def ack_mention(ack, say):
     say("Sto consultando la Knowledge Base di Coda... ⏳") 
 
 # Funzione B: Viene eseguita in background (può durare anche 10-20 secondi)
+# Funzione B: Viene eseguita in background
 def process_rag_query(event, say):
-    # Prende il testo scritto dall'utente (es. "@Bot come chiedo le ferie?")
     user_query = event["text"] 
     
-    # ---------------------------------------------------------
-    # QUI IN FUTURO INSERIREMO IL RAG:
-    # 1. Ricerca vettoriale in ChromaDB
-    # 2. Estrazione dei Markdown di Coda
-    # ---------------------------------------------------------
-    
-    # Per ora testiamo solo la connessione all'AI
-    prompt = f"Sei l'assistente aziendale. Rispondi in modo professionale a questo messaggio: {user_query}"
-    
-    # Chiama Gemini
-    ai_response = llm.invoke(prompt)
-    
-    # Invia la risposta finale nel canale Slack
-    say(ai_response.content)
+    try:
+        # Interroga il nostro RAG Engine
+        ai_response = ask_bot(user_query)
+        
+        # Invia la risposta finale nel canale Slack
+        say(ai_response)
+    except Exception as e:
+        say(f"Scusa, ho riscontrato un errore nel leggere la Knowledge Base: {e}")
 
 # Diciamo a Slack di ascoltare quando il bot viene menzionato (@Bot)
 slack_app.event("app_mention")(

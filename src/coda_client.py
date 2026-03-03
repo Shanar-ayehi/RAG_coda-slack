@@ -60,8 +60,8 @@ def export_page_to_markdown(doc_id: str, page_id: str) -> str:
 # Se esegui questo file direttamente, farà un test di download.
 if __name__ == "__main__":
     # Sostituisci questi con ID reali per fare una prova
-    TEST_DOC_ID = "inserisci_qui_il_doc_id"
-    TEST_PAGE_ID = "inserisci_qui_il_page_id"
+    TEST_DOC_ID = "F4vcKQJ8hi"
+    TEST_PAGE_ID = "22MiLv"
     
     if CODA_API_TOKEN:
         try:
