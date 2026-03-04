@@ -1,14 +1,16 @@
 import os
 from dotenv import load_dotenv
 from langchain_cohere import ChatCohere, CohereEmbeddings
-from langchain_chroma import Chroma
 from langchain_text_splitters import MarkdownHeaderTextSplitter
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_pinecone import PineconeVectorStore
 
 load_dotenv()
 cohere_api_key = os.environ.get("COHERE_API_KEY")
+pinecone_api_key = os.environ.get("PINECONE_API_KEY")
+index_name = os.environ.get("PINECONE_INDEX_NAME", "coda-rag-index")
 
 # 1. Inizializza i modelli di Cohere
 llm = ChatCohere(model="command-r-plus-08-2024", cohere_api_key=cohere_api_key)
@@ -34,10 +36,10 @@ def load_knowledge_base():
     md_header_splits = markdown_splitter.split_text(markdown_document)
 
     # Salviamo i pezzetti nel database vettoriale Chroma
-    vectorstore = Chroma.from_documents(
+    vectorstore = PineconeVectorStore.from_documents(
         documents=md_header_splits,
         embedding=embeddings,
-        persist_directory=persist_directory
+        index_name=index_name
     )
     print("✅ Knowledge Base caricata e pronta!")
     return vectorstore
@@ -45,7 +47,7 @@ def load_knowledge_base():
 def ask_bot(user_query: str) -> str:
     """Cerca nel database e genera la risposta con l'LLM"""
     # Carichiamo il database salvato
-    vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
+    vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings)
     retriever = vectorstore.as_retriever(search_kwargs={"k": 2}) # Prende i 2 pezzi più rilevanti
     
     # Creiamo le istruzioni per Gemini

@@ -44,6 +44,7 @@ coda-slack-rag/
 ## ⚙️ Setup e Installazione
 
 ### 1. Prerequisiti
+
 * Python 3.12 installato sul sistema.
 
 * Poetry installato (pip install poetry).
