@@ -16,9 +16,6 @@ index_name = os.environ.get("PINECONE_INDEX_NAME", "coda-rag-index")
 llm = ChatCohere(model="command-r-plus-08-2024", cohere_api_key=cohere_api_key)
 embeddings = CohereEmbeddings(model="embed-multilingual-v3.0", cohere_api_key=cohere_api_key)
 
-# 2. Configura il Database Vettoriale Locale (ChromaDB)
-persist_directory = "./chroma_db"
-
 def load_knowledge_base():
     """Legge il file finto, lo taglia e lo salva in ChromaDB"""
     print("🧠 Inizializzazione Knowledge Base in corso...")
