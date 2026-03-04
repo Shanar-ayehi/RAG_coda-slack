@@ -6,7 +6,7 @@ Un bot per Slack basato su architettura RAG (Retrieval-Augmented Generation) che
 
 * **Interrogazione in Linguaggio Naturale:** Gli utenti possono fare domande su Slack menzionando il bot (`@Bot come chiedo le ferie?`).
 * **Workaround Timeout Slack:** Utilizza i *Lazy Listeners* di `slack-bolt` per bypassare il limite dei 3 secondi di Slack, garantendo il tempo necessario all'AI per elaborare la risposta.
-* **Motore RAG Serverless:** Utilizza LangChain e **Pinecone** per la ricerca vettoriale sui documenti direttamente in cloud, garantendo persistenza dei dati anche se il server si riavvia.
+* **Motore RAG Serverless:** Utilizza LangChain e **Pinecone** per la ricerca vettoriale sui documenti direttamente in cloud, garantendo persistenza dei dati anche se il server si riavvia. Inoltre il motore è hostato tramite **Render**, una solusione PaaS.
 * **LLM ad alte prestazioni:** Alimentato dai modelli **Cohere** (`command-r-plus-08-2024` per la generazione e `embed-multilingual-v3.0` per gli embeddings).
 * **Estrazione Dati Coda:** Modulo dedicato per il polling asincrono e il download delle pagine Coda in formato Markdown.
 
@@ -17,6 +17,7 @@ Un bot per Slack basato su architettura RAG (Retrieval-Augmented Generation) che
 * **Linguaggio:** Python 3.12+
 * **Gestione Dipendenze:** Poetry
 * **Server Web:** FastAPI / Uvicorn
+* **Hosting via PaaS:** Render
 * **Integrazione Slack:** Slack Bolt Framework (`slack-bolt`)
 * **AI & Orchestrazione:** LangChain, LangChain-Cohere, LangChain-Pinecone, LangChain-Classic
 * **Database Vettoriale:** Pinecone (Cloud)
