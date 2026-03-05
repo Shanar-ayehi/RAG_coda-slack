@@ -31,3 +31,8 @@ def register_events(slack_app):
         ack=ack_mention,        # Risponde subito in < 3 secondi
         lazy=[process_rag_query] # Lavora in background con l'AI
     )
+    # 2. NUOVO: Ascolta i messaggi privati (Direct Messages)
+    slack_app.event("message")(
+        ack=ack_mention,
+        lazy=[process_rag_query]
+    )
