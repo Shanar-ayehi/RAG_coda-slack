@@ -3,8 +3,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from slack_bolt import App
 from slack_bolt.adapter.fastapi import SlackRequestHandler
-
-# Importiamo la funzione che contiene le regole dal nuovo file
 from src.slack_events import register_events
 
 # 1. Carica le variabili d'ambiente dal file .env

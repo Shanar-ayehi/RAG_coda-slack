@@ -68,7 +68,7 @@ poetry install
 
 ### 3. Variabili d'Ambiente
 
-Crea un file .env nella root del progetto e inserisci le seguenti chiavi:
+Crea un file `.env` nella root del progetto e inserisci le seguenti chiavi:
 
 ```Bash
 SLACK_BOT_TOKEN=xoxb-tuo-token-slack-qui
@@ -147,41 +147,47 @@ Scorri in cima alla stessa pagina ("OAuth & Permissions") e clicca sul bottone "
 
 Slack ti chiederà di confermare ("L'app richiede il permesso di accedere..."). Clicca su "Consenti" (Allow).
 
-🎉 Ecco il tuo primo Token! Vedrai apparire una stringa che inizia con xoxb-... (Bot User OAuth Token). Copiala e incollala nel tuo file .env alla riga SLACK_BOT_TOKEN.
+🎉 Ecco il tuo primo Token! Vedrai apparire una stringa che inizia con `xoxb-... (Bot User OAuth Token)`. Copiala e incollala nel tuo file `.env` alla riga `SLACK_BOT_TOKEN`.
 
-Per prendere il secondo segreto, vai nel menu a sinistra su "Basic Information", scorri fino a "App Credentials" e clicca su Show accanto a "Signing Secret". Copialo e incollalo nel tuo file .env alla riga SLACK_SIGNING_SECRET.
+Per prendere il secondo segreto, vai nel menu a sinistra su "Basic Information", scorri fino a "App Credentials" e clicca su Show accanto a "Signing Secret". Copialo e incollalo nel tuo file .env alla riga `SLACK_SIGNING_SECRET`.
 
 #### Fase 4: Collegare le orecchie (Event Subscriptions)
 
-Ora dobbiamo dire a Slack di mandare i messaggi al tuo computer tramite Ngrok.
+Ora dobbiamo dire a Slack di mandare i messaggi al tuo computer tramite Ngrok. Assicurati che il tuo server FastAPI e ngrok siano accesi sul tuo PC.
 
-Assicurati che il tuo server FastAPI e ngrok siano accesi sul tuo PC.
+* Vai nel menu a sinistra su "Event Subscriptions".
 
-Vai nel menu a sinistra su "Event Subscriptions".
+* Accendi l'interruttore "Enable Events" su On.
 
-Accendi l'interruttore "Enable Events" su On.
+* Nel campo "Request URL", incolla l'URL di ngrok e aggiungi /slack/events (es. `https://1234-abcd.ngrok-free.app/slack/events`). Aspetta un secondo e dovrebbe apparire la scritta verde "Verified".
 
-Nel campo "Request URL", incolla l'URL di ngrok e aggiungi /slack/events (es. `https://1234-abcd.ngrok-free.app/slack/events`). Aspetta un secondo e dovrebbe apparire la scritta verde "Verified".
+* Scorri in basso fino a "Subscribe to bot events", clicca su "Add Bot User Event" e aggiungi:
 
-Scorri in basso fino a "Subscribe to bot events", clicca su "Add Bot User Event" e aggiungi:
+  * `app_mention`
 
-app_mention
+* Clicca sul bottone verde "Save Changes" in basso a destra. (Slack ti chiederà di cliccare su un banner giallo in alto "reinstall your app" per applicare le modifiche. Fallo).
 
-Clicca sul bottone verde "Save Changes" in basso a destra. (Slack ti chiederà di cliccare su un banner giallo in alto "reinstall your app" per applicare le modifiche. Fallo).
+##### Il tocco finale (Su Slack)
 
-Il tocco finale (Su Slack)
 Ora il bot fa parte dell'azienda, ma non è ancora nelle stanze a chiacchierare!
 
-Apri la tua applicazione di Slack (o il sito web).
+* Apri la tua applicazione di Slack (o il sito web).
 
-Vai nel canale dove vuoi fare i test (es. #general o creane uno nuovo chiamato #test-bot).
+* Vai nel canale dove vuoi fare i test (es. #general o creane uno nuovo chiamato #test-bot).
 
-Scrivi questo messaggio nel canale:
-/invite @NomeDelTuoBot (sostituendo il nome con quello che gli hai dato).
+* Scrivi questo messaggio nel canale:
+
+>```text
+>/invite @NomeDelTuoBot (sostituendo il nome con quello che gli hai dato).
+>```
 
 Slack aggiungerà il bot al canale.
 
-Ora scrivi: @NomeDelTuoBot Qual è il budget formativo per un dipendente part-time?
+Ora scrivi:
+
+```text
+@NomeDelTuoBot Qual è il budget formativo per un dipendente part-time?
+```
 
 ### Come Collegare Ngrok
 
