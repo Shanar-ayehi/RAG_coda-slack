@@ -26,9 +26,13 @@ def load_knowledge_base(doc_id: str):
     
     # 0. Svuotiamo il database Pinecone per evitare duplicati
     print("🧹 Pulizia del database vettoriale in corso...")
-    pc = Pinecone(api_key=pinecone_api_key)
-    index = pc.Index(index_name)
-    index.delete(delete_all=True)
+    try:
+        pc = Pinecone(api_key=pinecone_api_key)
+        index = pc.Index(index_name)
+        index.delete(delete_all=True)
+    except Exception as e:
+        # Se l'indice è già vuoto (o non esiste il namespace), ignoriamo l'errore e continuiamo
+        print("ℹ️ Il database era già vuoto o appena creato. Procedo col caricamento...")
     
     # 1. Otteniamo la lista di tutte le pagine
     page_ids = get_all_pages_in_doc(doc_id)
@@ -48,7 +52,6 @@ def load_knowledge_base(doc_id: str):
             testo_md = export_page_to_markdown(doc_id, pid)
             frammenti_pagina = markdown_splitter.split_text(testo_md)
             tutti_i_frammenti.extend(frammenti_pagina)
-            # Piccola pausa per rispettare i limiti di velocità delle API
             time.sleep(1) 
         except Exception as e:
             print(f"⚠️ Errore durante il download della pagina {pid}: {e}")
