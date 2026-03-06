@@ -2435,6 +2435,27 @@ files = [
 ]
 
 [[package]]
+name = "ngrok"
+version = "1.7.0"
+description = "The ngrok Agent SDK for Python"
+optional = false
+python-versions = ">=3.12"
+groups = ["main"]
+files = [
+    {file = "ngrok-1.7.0-cp310-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:97ed4d29ed65f00acaeaa958324aeec32f2f3b07042090fe91d30b47429b7994"},
+    {file = "ngrok-1.7.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:b96b5efc8d6bb0f5551005e4d813a05fa7ccae057c30719934d6f6d7ae6858c6"},
+    {file = "ngrok-1.7.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:8b95a3e1ca6f8120395a118ae85ad940197b4565c530f1941678770e3be63bde"},
+    {file = "ngrok-1.7.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a0c63849756558cf79186cc75b4b58175cbc907d14a5d907175627c5ce6201db"},
+    {file = "ngrok-1.7.0-cp310-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:69a483a27945ff95a5976cfa317ca504ec121c07d147f2dc98ffe15b36ff7e51"},
+    {file = "ngrok-1.7.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0f3793cec6e52d8aff427fc1ddbf914c3b51f0e28240187bdaf27fd0ba8521f0"},
+    {file = "ngrok-1.7.0-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:4b1acf42cf7489b2356c4d8d5075d3f5d989a4972037bb717ffe7308bb9bcac8"},
+    {file = "ngrok-1.7.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:567acd8edcb89fb3f4f387d347b4ddb0f9245348aecd5b490dfbd6e2e192dbd8"},
+    {file = "ngrok-1.7.0-cp310-abi3-win32.whl", hash = "sha256:7927b73aaf04d33fdc0a17e6a354854c8aab08afa92a1e0840946f4969aeeae1"},
+    {file = "ngrok-1.7.0-cp310-abi3-win_amd64.whl", hash = "sha256:270c3f1638408cf75ac6ac88b4afb2676a2b97a191c5d9cff7ccaa5c7819469a"},
+    {file = "ngrok-1.7.0-cp310-abi3-win_arm64.whl", hash = "sha256:cfa809dff993c5feecafe5899010c1b85c27e242d051246a3872bdb2d7ca3bec"},
+]
+
+[[package]]
 name = "numpy"
 version = "2.4.2"
 description = "Fundamental package for array computing in Python"
@@ -5459,4 +5480,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = "~3.12, <4.0.0"
-content-hash = "c847f1b5281733fc35cb4982e3ee1287a37aa94aec68411a9be3f3dc3ea2f507"
+content-hash = "7535de267657a66fc2097f93e450e25ae3fdc8a26908ec62ac69095e9e109b79"
