@@ -2,8 +2,9 @@ import os
 import time
 from dotenv import load_dotenv
 from pinecone import Pinecone
-from langchain_cohere import ChatCohere, CohereEmbeddings
+from langchain_cohere import ChatCohere, CohereEmbeddings, RerankCohere
 from langchain_text_splitters import MarkdownHeaderTextSplitter
+from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 from langchain_core.prompts import ChatPromptTemplate
@@ -19,6 +20,7 @@ index_name = os.environ.get("PINECONE_INDEX_NAME", "coda-rag-index")
 # Inizializza i modelli di Cohere
 llm = ChatCohere(model="command-r-plus-08-2024", cohere_api_key=cohere_api_key)
 embeddings = CohereEmbeddings(model="embed-multilingual-v3.0", cohere_api_key=cohere_api_key)
+rerank = RerankCohere(model = "rerank-multilingual-v3.0", cohere_api_key=cohere_api_key)
 
 def load_knowledge_base(doc_id: str):
     """Scarica tutte le pagine da Coda, svuota Pinecone e carica i nuovi vettori"""
@@ -74,8 +76,19 @@ def load_knowledge_base(doc_id: str):
 def ask_bot(user_query: str) -> str:
     """Cerca nel database e genera la risposta con l'LLM"""
     vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 2}) 
+    base_retriever = vectorstore.as_retriever(search_kwargs={"k": 20})
     
+    cohere_rerank = RerankCohere(
+        model="rerank-multilingual-v3.0", 
+        top_n=4, # Quanti frammenti "perfetti" vogliamo far passare alla fine
+        cohere_api_key=os.getenv("COHERE_API_KEY")
+        )
+    
+    compression_retriever = ContextualCompressionRetriever(
+        base_compressor=cohere_rerank, 
+        base_retriever=base_retriever
+    )
+
     # Istruzioni di base per l'AI
     system_prompt = (
     "Sei l'assistente virtuale HR dell'azienda. Il tuo compito è rispondere alle domande dei dipendenti "
@@ -94,7 +107,7 @@ def ask_bot(user_query: str) -> str:
     ])
     
     question_answer_chain = create_stuff_documents_chain(llm, prompt)
-    rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+    rag_chain = create_retrieval_chain(compression_retriever, question_answer_chain)
     
     response = rag_chain.invoke({"input": user_query})
     return response["answer"]
