@@ -7,10 +7,11 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from dotenv import load_dotenv
 from pinecone import Pinecone
-from langchain_cohere import ChatCohere, CohereEmbeddings, RerankCohere
+from langchain_cohere import ChatCohere, CohereEmbeddings, CohereRerank as RerankCohere
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
-from langchain.retrievers.contextual_compression import ContextualCompressionRetriever
-from langchain.retrievers import BM25Retriever, EnsembleRetriever
+from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
+from langchain_community.retrievers import BM25Retriever
+from langchain.retrievers import EnsembleRetriever
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 from langchain_pinecone import PineconeVectorStore
