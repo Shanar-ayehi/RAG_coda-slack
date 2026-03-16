@@ -162,7 +162,7 @@ Ora che ha i permessi, possiamo "assumerlo" in azienda.
     🎉 Ecco il tuo primo Token! Vedrai apparire una stringa che inizia con `xoxb-... (Bot User OAuth Token)`. Copiala e incollala nel tuo file `.env` alla riga `SLACK_BOT_TOKEN`.
 
 3. Per prendere il secondo segreto, vai nel menu a sinistra su "Basic Information"
-4. Scorri fino a "App Credentials" e clicca su Show accanto a "Signing Secret". 
+4. Scorri fino a "App Credentials" e clicca su Show accanto a "Signing Secret".
 5. Copialo e incollalo nel tuo file .env alla riga `SLACK_SIGNING_SECRET`.
 
 #### Fase 4: Collegare le orecchie (Event Subscriptions)
