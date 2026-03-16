@@ -5,23 +5,28 @@ Questo documento descrive le migliorie implementate al tuo sistema RAG per risol
 ## Problemi Identificati
 
 ### 1. **Strategia di Chunking Inadeguata**
+
 - **Problema**: Chunking basato solo su header Markdown creava chunk troppo grandi
 - **Impatto**: Difficoltà del sistema RAG a trovare risposte precise
 - **Evidenza**: Recupero di 20 chunk e filtraggio a 4, ma ogni chunk era enorme
 
 ### 2. **Configurazione del Reranker Subottimale**
+
 - **Problema**: Uso di `top_n=4` con 20 recuperi iniziali
 - **Impatto**: Troppo contesto che confonde l'LLM e porta a risposte approssimative
 
 ### 3. **Mancanza di Potenziamento delle Query**
+
 - **Problema**: Nessun preprocessing o espansione delle query prima dell'embedding
 - **Impatto**: Query ambigue come "ferie" non venivano migliorate, portando a un recupero scars
 
 ### 4. **Assenza di Contesto Conversazionale**
+
 - **Problema**: La funzione `ask_bot` non implementava il recupero della storia delle conversazioni
 - **Impatto**: Il bot non poteva comprendere il contesto dai messaggi precedenti
 
 ### 5. **Prompt di Sistema Limitato**
+
 - **Problema**: Prompt senza esempi specifici su come gestire l'ambiguità
 - **Impatto**: Il modello forniva comunque risposte approssimative quando avrebbe dovuto chiedere chiarimenti
 
@@ -37,6 +42,7 @@ def create_hybrid_chunks(text: str, page_id: str) -> List[Document]:
 ```
 
 **Caratteristiche:**
+
 - **Dimensione chunk ridotta**: 1024 token invece di dimensioni illimitate
 - **Overlap strategico**: 100 token per preservare il contesto
 - **Metadata arricchiti**: ID chunk, ID pagina, dimensione per un migliore filtraggio
@@ -50,12 +56,14 @@ def enhance_query(query: str) -> str:
 ```
 
 **Espansione Query:**
+
 - `ferie` → `ferie permessi congedo vacanze`
 - `malattia` → `malattia assenza medica certificato`
 - `rimborsi` → `rimborsi spese rimborsare`
 - `formazione` → `formazione training corsi`
 
 **Ottimizzazione Reranker:**
+
 - Riduzione da `top_n=4` a `top_n=3` per un contesto più focalizzato
 - Aumento da `k=20` a `k=25` per una ricerca più ampia iniziale
 
@@ -67,6 +75,7 @@ def get_slack_thread_history(thread_ts: str, channel: str) -> List[Dict[str, Any
 ```
 
 **Funzionalità:**
+
 - Recupero automatico della storia della conversazione dai thread Slack
 - Limitazione a 10 messaggi per evitare overflow di contesto
 - Esclusione dei messaggi del bot per evitare loop
@@ -82,6 +91,7 @@ system_prompt = (
 ```
 
 **Miglioramenti:**
+
 - Esempi specifici di gestione dell'ambiguità
 - Istruzioni chiare su quando chiedere chiarimenti
 - Formattazione migliorata per una migliore comprensione del modello
@@ -97,6 +107,7 @@ def check_response_confidence(response: str) -> bool:
 ```
 
 **Monitoraggio:**
+
 - Logging delle metriche di query (tempi, successo, dimensione chunk)
 - Controllo della confidenza delle risposte
 - Fallback intelligente per risposte incerte
@@ -112,6 +123,7 @@ except Exception as e:
 ```
 
 **Robustezza:**
+
 - Gestione degli errori con fallback appropriati
 - Logging dettagliato per il debug
 - Risposte informative in caso di problemi
@@ -119,22 +131,27 @@ except Exception as e:
 ## Benefici Attesi
 
 ### 1. **Precisione Migliorata**
+
 - Chunk più piccoli e mirati portano a un recupero più preciso
 - Espansione delle query aumenta la probabilità di trovare informazioni rilevanti
 
 ### 2. **Riduzione delle Allucinazioni**
+
 - Contesto più focalizzato riduce la confusione del modello
 - Controllo della confidenza impedisce risposte incerte
 
 ### 3. **Migliore Gestione dell'Ambiguità**
+
 - Prompt specifico con esempi pratici
 - Riconoscimento automatico delle query vaghe
 
 ### 4. **Monitoraggio e Debugging**
+
 - Metriche dettagliate per l'analisi delle performance
 - Logging per identificare problemi ricorrenti
 
 ### 5. **Esperienza Utente Migliorata**
+
 - Risposte più accurate e specifiche
 - Gestione appropriata delle richieste ambigue
 - Tempi di risposta ottimizzati
@@ -142,6 +159,7 @@ except Exception as e:
 ## Configurazione Consigliata
 
 ### Parametri del Reranker
+
 ```python
 cohere_rerank = RerankCohere(
     model="rerank-multilingual-v3.0", 
@@ -151,11 +169,13 @@ cohere_rerank = RerankCohere(
 ```
 
 ### Parametri del Recuperatore
+
 ```python
 vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 25})
 ```
 
 ### Dimensioni Chunk
+
 - **Dimensione massima**: 1500 token per chunk semantico
 - **Dimensione target**: 1024 token per chunk finale
 - **Overlap**: 100 token per preservare il contesto
@@ -163,6 +183,7 @@ vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 25})
 ## Monitoraggio delle Performance
 
 Il sistema ora registra automaticamente:
+
 - Tempo di recupero delle informazioni
 - Tempo di generazione della risposta
 - Numero di documenti recuperati
