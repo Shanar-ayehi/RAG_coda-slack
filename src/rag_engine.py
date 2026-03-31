@@ -1,23 +1,23 @@
 import os
 import time
+import asyncio
 import re
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from datetime import datetime
 from dotenv import load_dotenv
 from pinecone import Pinecone
+from tenacity import retry, stop_after_attempt, wait_exponential
 from langchain_cohere import ChatCohere, CohereEmbeddings, CohereRerank as RerankCohere
 from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
 from langchain_classic.retrievers.contextual_compression import ContextualCompressionRetriever
 from langchain_community.retrievers import BM25Retriever
-from langchain.retrievers import EnsembleRetriever
+from langchain_classic.retrievers import EnsembleRetriever
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.documents import Document
 from langchain_pinecone import PineconeVectorStore
-from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
 
 # Setup logging
@@ -30,6 +30,10 @@ load_dotenv()
 cohere_api_key = os.environ.get("COHERE_API_KEY")
 pinecone_api_key = os.environ.get("PINECONE_API_KEY")
 index_name = os.environ.get("PINECONE_INDEX_NAME", "coda-rag-index")
+
+# Global cache for BM25 documents (stateless-safe, rebuilt on each load)
+_kb_documents: List[Document] = []
+_query_counter: int = 0
 
 # Inizializza i modelli di Cohere
 llm = ChatCohere(model="command-r-plus-08-2024", cohere_api_key=cohere_api_key)
@@ -229,8 +233,11 @@ def create_hybrid_chunks(text: str, page_id: str) -> List[Document]:
     
     return specialized_chunks
 
-def load_knowledge_base(doc_id: str):
-    """Scarica tutte le pagine da Coda, svuota Pinecone e carica i nuovi vettori"""
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
+async def load_knowledge_base(doc_id: str):
+    """Scarica tutte le pagine da Coda, svuota Pinecone e carica i nuovi vettori (async, with retry)"""
+    global _kb_documents
+    
     print("☁️ Inizio sincronizzazione massiva verso Pinecone...")
     
     # 0. Svuotiamo il database Pinecone per evitare duplicati
@@ -243,17 +250,17 @@ def load_knowledge_base(doc_id: str):
         # Se l'indice è già vuoto (o non esiste il namespace), ignoriamo l'errore e continuiamo
         print("ℹ️ Il database era già vuoto o appena creato. Procedo col caricamento...")
     
-    # 1. Otteniamo la lista di tutte le pagine
-    page_ids = get_all_pages_in_doc(doc_id)
+    # 1. Otteniamo la lista di tutte le pagine (async)
+    page_ids = await get_all_pages_in_doc(doc_id)
     tutti_i_frammenti = []
     
-    # 2. Processiamo ogni pagina con chunking ibrido
+    # 2. Processiamo ogni pagina con chunking ibrido (async)
     for pid in page_ids:
         try:
-            testo_md = export_page_to_markdown(doc_id, pid)
+            testo_md = await export_page_to_markdown(doc_id, pid)
             frammenti_pagina = create_hybrid_chunks(testo_md, pid)
             tutti_i_frammenti.extend(frammenti_pagina)
-            time.sleep(1) 
+            await asyncio.sleep(1) 
         except Exception as e:
             print(f"⚠️ Errore durante il download della pagina {pid}: {e}")
 
@@ -262,6 +269,10 @@ def load_knowledge_base(doc_id: str):
         return None
 
     print(f"🔪 Testo diviso in {len(tutti_i_frammenti)} frammenti ottimizzati. Invio a Pinecone...")
+
+    # 3. Cache globale per BM25 Retriever
+    _kb_documents = tutti_i_frammenti
+    logger.info(f"📚 Cached {len(_kb_documents)} documents for BM25 retriever")
 
     # 4. Salviamo l'intero malloppo nel database vettoriale
     vectorstore = PineconeVectorStore.from_documents(
@@ -303,17 +314,28 @@ def get_slack_thread_history(thread_ts: str, channel: str) -> List[Dict[str, Any
         return []
 
 def create_enhanced_retriever():
-    """Create an enhanced retriever with query expansion and ensemble methods"""
+    """Create an enhanced retriever with Hybrid Search (BM25 + Vector Ensemble)"""
+    global _kb_documents
+    
     vectorstore = PineconeVectorStore(index_name=index_name, embedding=embeddings)
     
-    # Create multiple retrievers for ensemble
+    # Vector retriever for semantic search
     vector_retriever = vectorstore.as_retriever(search_kwargs={"k": 25})
     
-    # BM25 retriever for keyword matching
-    # Note: This would need documents to be loaded for BM25
-    # For now, we'll use just the vector retriever with enhanced query
-    
-    return vector_retriever
+    # BM25 retriever for keyword/exact match search
+    if _kb_documents:
+        bm25_retriever = BM25Retriever.from_documents(_kb_documents, k=25)
+        logger.info(f"🔍 Hybrid Search enabled: BM25 ({len(_kb_documents)} docs) + Vector")
+        
+        # Ensemble Retriever: 40% keyword (BM25) + 60% semantic (Vector)
+        ensemble_retriever = EnsembleRetriever(
+            retrievers=[bm25_retriever, vector_retriever],
+            weights=[0.4, 0.6]
+        )
+        return ensemble_retriever
+    else:
+        logger.warning("⚠️ No cached documents for BM25, falling back to vector-only search")
+        return vector_retriever
 
 def create_specialized_reranker():
     """Create a specialized reranker with weights for technical marketing content"""
@@ -379,9 +401,81 @@ def apply_specialized_weights(retrieved_docs: List[Document], query: str) -> Lis
     # For now, just return the docs with metadata indicating weights
     return [doc for doc, _ in sorted(weighted_docs, key=lambda x: x[1], reverse=True)]
 
+def classify_query(query: str) -> Dict[str, Any]:
+    """Classify query type and tool focus for intelligent routing"""
+    query_lower = query.lower()
+    
+    # Classify query type
+    query_type = 'generic'
+    if any(keyword in query_lower for keyword in ['configurare', 'setup', 'creare', 'come faccio', 'procedura']):
+        query_type = 'procedural'
+    elif any(keyword in query_lower for keyword in ['differenza', 'confronto', 'vs', 'meglio']):
+        query_type = 'comparative'
+    elif any(keyword in query_lower for keyword in ['best practice', 'migliori pratiche', 'raccomandazioni']):
+        query_type = 'best_practice'
+    elif any(keyword in query_lower for keyword in ['errore', 'problema', 'troubleshooting', 'non funziona']):
+        query_type = 'troubleshooting'
+    elif any(keyword in query_lower for keyword in ['esempio', 'demo', 'use case', 'caso']):
+        query_type = 'example'
+    
+    # Classify tool focus
+    tool_focus = 'generic'
+    for tool in ['hubspot', 'coda', 'typeform']:
+        if tool in query_lower:
+            tool_focus = tool
+            break
+    
+    # Calculate complexity
+    complexity = 'basic'
+    if len(query.split()) > 15:
+        complexity = 'advanced'
+    elif len(query.split()) > 8:
+        complexity = 'intermediate'
+    
+    return {
+        'query_type': query_type,
+        'tool_focus': tool_focus,
+        'complexity': complexity,
+        'needs_examples': query_type in ['example', 'comparative'],
+        'needs_steps': query_type == 'procedural',
+        'needs_troubleshooting': query_type == 'troubleshooting'
+    }
+
+def apply_query_routing_weights(retrieved_docs: List[Document], query_classification: Dict[str, Any]) -> List[Document]:
+    """Apply routing-based weights to retrieved documents"""
+    routed_docs = []
+    
+    for doc in retrieved_docs:
+        score_boost = 1.0
+        
+        if hasattr(doc, 'metadata'):
+            # Boost procedural docs for procedural queries
+            if query_classification['needs_steps'] and doc.metadata.get('content_type') == 'operations':
+                score_boost *= 1.4
+            
+            # Boost examples for example/comparative queries
+            if query_classification['needs_examples'] and doc.metadata.get('content_type') == 'examples':
+                score_boost *= 1.3
+            
+            # Boost troubleshooting for problem queries
+            if query_classification['needs_troubleshooting'] and doc.metadata.get('content_type') == 'troubleshooting':
+                score_boost *= 1.5
+            
+            # Boost tool-specific docs
+            if query_classification['tool_focus'] != 'generic':
+                if doc.metadata.get('tool_type') == query_classification['tool_focus']:
+                    score_boost *= 1.3
+        
+        routed_docs.append((doc, score_boost))
+    
+    return [doc for doc, _ in sorted(routed_docs, key=lambda x: x[1], reverse=True)]
+
 def log_query_metrics(query: str, response: str, retrieval_time: float, llm_time: float, 
                      retrieved_docs: List[Document], success: bool):
     """Log query metrics for monitoring and debugging"""
+    
+    # Classify query
+    query_classification = classify_query(query)
     
     # Analyze retrieved documents for specialized metrics
     tool_specificity = 0
@@ -406,27 +500,8 @@ def log_query_metrics(query: str, response: str, retrieval_time: float, llm_time
         code_blocks_count = len([doc for doc in retrieved_docs 
                                if hasattr(doc, 'metadata') and doc.metadata.get('has_code_block', False)])
     
-    # Analyze query type
-    query_type = 'generic'
-    query_lower = query.lower()
-    
-    if any(keyword in query_lower for keyword in ['configurare', 'setup', 'creare', 'come faccio']):
-        query_type = 'procedural'
-    elif any(keyword in query_lower for keyword in ['differenza', 'confronto', 'vs']):
-        query_type = 'comparative'
-    elif any(keyword in query_lower for keyword in ['best practice', 'migliori pratiche', 'raccomandazioni']):
-        query_type = 'best_practice'
-    elif any(keyword in query_lower for keyword in ['errore', 'problema', 'troubleshooting']):
-        query_type = 'troubleshooting'
-    elif any(keyword in query_lower for keyword in ['esempio', 'demo', 'use case']):
-        query_type = 'example'
-    
-    # Analyze tool focus
-    tool_focus = 'generic'
-    for tool in ['hubspot', 'coda', 'typeform']:
-        if tool in query_lower:
-            tool_focus = tool
-            break
+    query_type = query_classification['query_type']
+    tool_focus = query_classification['tool_focus']
     
     metrics = {
         "timestamp": datetime.now().isoformat(),
@@ -515,21 +590,46 @@ def check_response_confidence(response: str) -> bool:
     
     return True
 
+def generate_hypothetical_answer(query: str) -> str:
+    """Generate a hypothetical answer for HyDE (Hypothetical Document Embeddings)"""
+    try:
+        hyde_prompt = ChatPromptTemplate.from_messages([
+            ("system", "Genera una risposta ipotetica breve e tecnica a questa domanda. La risposta deve contenere termini e concetti che sarebbero presenti nei documenti aziendali reali. Rispondi in italiano con massimo 100 parole."),
+            ("human", "{query}")
+        ])
+        hyde_chain = hyde_prompt | llm | StrOutputParser()
+        hypothetical = hyde_chain.invoke({"query": query})
+        logger.info(f"🔮 HyDE generated hypothetical answer ({len(hypothetical)} chars)")
+        return hypothetical
+    except Exception as e:
+        logger.warning(f"⚠️ HyDE failed, proceeding without: {e}")
+        return ""
+
 def ask_bot(user_query: str, thread_ts: str = None, channel: str = None) -> str:
-    """Enhanced RAG function with query expansion, context handling, and quality assurance"""
+    """Enhanced RAG function with Hybrid Search, HyDE, specialized weights, and quality assurance"""
     
     start_time = time.time()
+    _query_counter += 1
     
     try:
-        # 1. Enhance the query for better retrieval
+        # 1. Classify query for routing
+        query_classification = classify_query(user_query)
+        
+        # 2. Enhance the query for better retrieval
         enhanced_query = enhance_query(user_query)
+        
+        # 3. HyDE: Generate hypothetical answer for complex queries
+        if query_classification['complexity'] in ['intermediate', 'advanced']:
+            hypothetical = generate_hypothetical_answer(user_query)
+            if hypothetical:
+                enhanced_query = f"{enhanced_query} {hypothetical}"
         
         # 2. Get conversation history if available
         conversation_history = []
         if thread_ts and channel:
             conversation_history = get_slack_thread_history(thread_ts, channel)
         
-        # 3. Create enhanced retriever and measure retrieval time
+        # 3. Create enhanced retriever (Hybrid: BM25 + Vector) and measure retrieval time
         retrieval_start = time.time()
         base_retriever = create_enhanced_retriever()
         
@@ -545,11 +645,16 @@ def ask_bot(user_query: str, thread_ts: str = None, channel: str = None) -> str:
             base_retriever=base_retriever
         )
         
-        # Get retrieved documents for metrics
+        # 5. Retrieve documents and apply specialized weights
         retrieved_docs = compression_retriever.invoke(enhanced_query)
+        
+        # Apply specialized weights for marketing/tech content
+        weighted_docs = apply_specialized_weights(retrieved_docs, user_query)
+        logger.info(f"📊 Applied specialized weights to {len(weighted_docs)} documents")
+        
         retrieval_time = time.time() - retrieval_start
         
-        # 5. Enhanced system prompt with better ambiguity handling
+        # 6. Enhanced system prompt with better ambiguity handling
         system_prompt = (
             "Sei un esperto di Marketing Inbound e strumenti tecnici (HubSpot, Coda, Typeform). "
             "Rispondi ESCLUSIVAMENTE basandoti sui documenti forniti.\n\n"
@@ -586,16 +691,19 @@ def ask_bot(user_query: str, thread_ts: str = None, channel: str = None) -> str:
             ("human", "{input}"),
         ])
         
-        # 6. Create enhanced chain with better error handling
-        question_answer_chain = create_stuff_documents_chain(llm, prompt)
-        rag_chain = create_retrieval_chain(compression_retriever, question_answer_chain)
-        
-        # 7. Generate response and measure LLM time
+        # 7. Generate response using weighted documents directly
         llm_start = time.time()
-        response = rag_chain.invoke({"input": enhanced_query})
+        question_answer_chain = create_stuff_documents_chain(llm, prompt)
+        
+        # Format context from weighted docs
+        context = "\n\n".join([doc.page_content for doc in weighted_docs])
+        response = question_answer_chain.invoke({
+            "context": context,
+            "input": enhanced_query
+        })
         llm_time = time.time() - llm_start
         
-        final_response = response["answer"]
+        final_response = response
         
         # 8. Quality assurance checks
         confidence = check_response_confidence(final_response)
@@ -611,7 +719,11 @@ def ask_bot(user_query: str, thread_ts: str = None, channel: str = None) -> str:
         
         # 9. Log metrics
         total_time = time.time() - start_time
-        log_query_metrics(user_query, final_response, retrieval_time, llm_time, retrieved_docs, confidence)
+        log_query_metrics(user_query, final_response, retrieval_time, llm_time, weighted_docs, confidence)
+        
+        # 10. Generate technical metrics summary every 10 queries
+        if _query_counter % 10 == 0:
+            log_technical_metrics_summary()
         
         return final_response
         

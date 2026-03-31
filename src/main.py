@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, BackgroundTasks
 from slack_bolt import App
@@ -28,7 +29,13 @@ api_app = FastAPI()
 async def slack_endpoint(req: Request):
     return await slack_handler.handle(req)
 
-# --- ENDPOINT 2: CODA WEBHOOK ---
+# --- ENDPOINT 2: HEALTH CHECK (Keep-Awake) ---
+@api_app.get("/health")
+async def health_check():
+    """Health check endpoint per keep-awake e monitoring."""
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+
+# --- ENDPOINT 3: CODA WEBHOOK ---
 @api_app.post("/coda-update")
 async def coda_webhook(background_tasks: BackgroundTasks):
     """
@@ -41,7 +48,7 @@ async def coda_webhook(background_tasks: BackgroundTasks):
     if not doc_id:
         return {"status": "error", "message": "CODA_DOC_ID mancante nel file .env"}
     
-    # Esegue la funzione in background per non far andare Coda in timeout
+    # Esegue la funzione async in background per non far andare Coda in timeout
     background_tasks.add_task(load_knowledge_base, doc_id)
     
-    return {"status": "ok", "message": "Aggiornamento Knowledge Base avviato in background!"}
+    return {"status": "ok", "message": "Aggiornamento Knowledge Base avviato in background!"} 

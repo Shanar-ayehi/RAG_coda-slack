@@ -1,4 +1,10 @@
+import logging
 from src.rag_engine import ask_bot
+
+logger = logging.getLogger(__name__)
+
+# Deduplicazione eventi: traccia eventi già processati
+_processed_events: set = set()
 
 def register_events(slack_app):
     """
@@ -16,6 +22,19 @@ def register_events(slack_app):
 
     # Funzione B: Viene eseguita in background
     def process_rag_query(event, say):
+        global _processed_events
+        
+        # Deduplicazione: evita processing multipli dello stesso evento
+        event_id = event.get("event_id") or f"{event.get('ts')}_{event.get('channel')}"
+        if event_id in _processed_events:
+            logger.info(f"⏭️ Evento già processato: {event_id}")
+            return
+        _processed_events.add(event_id)
+        
+        # Pulizia periodica del set (mantieni ultimi 1000 eventi)
+        if len(_processed_events) > 1000:
+            _processed_events.clear()
+        
         user_query = event["text"] 
         thread_ts = event.get("thread_ts", event.get("ts"))  # Use thread_ts if exists, otherwise use ts
         channel = event["channel"]
