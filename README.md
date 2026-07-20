@@ -1,209 +1,199 @@
 # RAG Coda-Slack Bot
 
-Un bot per Slack basato su architettura RAG (Retrieval-Augmented Generation) che permette agli utenti di interrogare la Knowledge Base aziendale ospitata su Coda.io direttamente tramite chat.
+A Slack bot based on a RAG (Retrieval-Augmented Generation) architecture that allows users to query the corporate Knowledge Base hosted on Coda.io directly via chat.
 
-## Funzionalità Principali
+## Main Features
 
-* **Interrogazione in Linguaggio Naturale:** Gli utenti possono fare domande su Slack menzionando il bot (`@Bot come chiedo le ferie?`).
-* **Workaround Timeout Slack:** Utilizza i *Lazy Listeners* di `slack-bolt` per bypassare il limite dei 3 secondi di Slack, garantendo il tempo necessario all'AI per elaborare la risposta.
-* **Motore RAG Serverless:** Utilizza LangChain e **Pinecone** per la ricerca vettoriale sui documenti direttamente in cloud, garantendo persistenza dei dati anche se il server si riavvia. Inoltre il motore è hostato tramite **Render**, una solusione PaaS.
-* **LLM ad alte prestazioni:** Alimentato dai modelli **Cohere** (`command-r-plus-08-2024` per la generazione e `embed-multilingual-v3.0` per gli embeddings).
-* **Estrazione Dati Coda:** Modulo dedicato per il polling asincrono e il download delle pagine Coda in formato Markdown.
+* **Natural Language Querying:** Users can ask questions on Slack by mentioning the bot (`@Bot how do I request time off?`).
+* **Slack Timeout Workaround:** Uses `slack-bolt` *Lazy Listeners* to bypass Slack's 3-second limit, ensuring the AI has the time needed to process the response.
+* **Serverless RAG Engine:** Uses LangChain and **Pinecone** for vector search on documents directly in the cloud, ensuring data persistence even if the server restarts. Additionally, the engine is hosted via **Render**, a PaaS solution.
+* **High-Performance LLM:** Powered by **Cohere** models (`command-r-plus-08-2024` for generation and `embed-multilingual-v3.0` for embeddings).
+* **Coda Data Extraction:** Dedicated module for asynchronous polling and downloading Coda pages in Markdown format.
 
 ---
 
-## Stack Tecnologico
+## Tech Stack
 
-* **Linguaggio:** Python 3.12+
-* **Gestione Dipendenze:** Poetry
-* **Server Web:** FastAPI / Uvicorn
+* **Programming Language:** Python 3.12+
+* **Dependencies Management:** Poetry
+* **Webserver:** FastAPI / Uvicorn
 * **Hosting via PaaS:** Render
-* **Integrazione Slack:** Slack Bolt Framework (`slack-bolt`)
-* **AI & Orchestrazione:** LangChain, LangChain-Cohere, LangChain-Pinecone, LangChain-Classic
-* **Database Vettoriale:** Pinecone (Cloud)
+* **Slack Integration:** Slack Bolt Framework (`slack-bolt`)
+* **AI & Orchestration:** LangChain, LangChain-Cohere, LangChain-Pinecone, LangChain-Classic
+* **Vectorial Database:** Pinecone (Cloud)
 
 ---
 
-## Struttura del Progetto
+## Project Structure
 
 ```text
 coda-slack-rag/
-├── .env                 # Variabili d'ambiente sensibili (NON tracciato da Git)
-├── .gitignore           # File ignorati da Git 
-├── pyproject.toml       # Configurazione del progetto e librerie (Poetry)
-├── poetry.lock          # Versioni esatte delle dipendenze bloccate
-├── README.md            # Questo file di documentazione
-├── mock_coda.md         # File Markdown di test per simulare l'export da Coda
+├── .env                 # ENV variables
+├── .gitignore           # files ignored by git 
+├── pyproject.toml       # Poetry's file for dependencies management 
+├── poetry.lock          # Instance of Libraries' versions.
+├── README.md            # this file
+├── mock_coda.md         # test md file for CODA API simulation
 │
-└── src/                 # Sorgenti del codice
-    ├── __init__.py      # Inizializzatore del modulo Python
-    ├── main.py          # Entry point FastAPI e smistamento endpoint Slack
-    ├── slack_events.py  # Gestione logica eventi Slack (mentions, lazy listeners)
-    ├── rag_engine.py    # Logica AI: chunking, embedding, Pinecone DB e chain LangChain
-    └── coda_client.py   # Logica per l'esportazione asincrona del Markdown da Coda API
+└── src/                 # source code
+    ├── __init__.py      # initialization of py
+    ├── main.py          # Entry point FastAPI & Slack endpoint routing
+    ├── slack_events.py  # logical management for Slack events (mentions, lazy listeners)
+    ├── rag_engine.py    # AI logic: chunking, embedding, Pinecone DB and chain LangChain
+    └── coda_client.py   # Logic for asynchronous Markdown export from Coda API
 ```
 
-## Setup e Installazione
+## Setup and Installation
 
-### 1. Prerequisiti
+### 1. Prerequisites
 
-* Python 3.12 installato sul sistema.
+* Python 3.12;
 
-* Poetry installato (pip install poetry).
+* Poetry;
 
-* Un account su Cohere per l'API Key.
+* Cohere account for API key;
 
-* Un account su Pinecone (creare un Indice chiamato coda-rag-index con 1024 dimensions e metrica cosine).
+* Pinecone account (Create an index named `coda-rag-index` with 1024 dimensions and cosine metric.).
 
-* Un'App creata sulla Slack API Dashboard.
+* An App created on the Slack API Dashboard.
 
-### 2. Installazione dipendenze
+### 2. Dependencies Installation
 
-Clona la repository e installa le dipendenze tramite Poetry:
+Clone the repo and install the dependencies via Poetry:
 
 ```Bash
 poetry env use 3.12
 poetry install
 ```
 
-### 3. Variabili d'Ambiente
+### 3. ENV variables
 
-Crea un file `.env` nella root del progetto e inserisci le seguenti chiavi:
+create a `.env` file in the root folder of the project and insert the following keys:
 
 ```Bash
-SLACK_BOT_TOKEN=xoxb-tuo-token-slack-qui
-SLACK_SIGNING_SECRET=tuo-signing-secret-slack-qui
-COHERE_API_KEY=tua-api-key-cohere-qui
-CODA_API_TOKEN=tuo-token-coda-qui
-PINECONE_API_KEY=tua-api-key-pinecone-qui
+SLACK_BOT_TOKEN=xoxb-your-slack-token
+SLACK_SIGNING_SECRET=your-slack-signing-secret
+COHERE_API_KEY=your-cohere-api-key
+CODA_API_TOKEN=your-coda-token
+PINECONE_API_KEY=your-cohere-api-key
 PINECONE_INDEX_NAME=coda-rag-index
 ```
 
-### ⚠️ Nota per il Build (Errore pacchetto Poetry)
+### ⚠️ Warning for the build (Poetry pack error)
 
-Se durante l'installazione o il deploy ricevi l'errore di build `No file/folder found for package rag-coda-slack`, significa che Poetry sta cercando di impacchettare il progetto come se fosse una libreria pubblica, basandosi sui dati inseriti in `pyproject.toml` (come `name = "rag-coda-slack"` e la versione Python `~3.12, <4.0.0`).
+If during installation or deployment you receive the build error `No file/folder found for package rag-coda-slack`, it means that Poetry is trying to package the project as if it were a public library, based on the data entered in `pyproject.toml` (such as `name = "rag-coda-slack"` and the Python version `~3.12, <4.0.0`).
 
-Per disabilitare questa funzione e usare Poetry solo per gestire le dipendenze, aggiungi questo blocco alla fine del file `pyproject.toml`:
+To disable this feature and use Poetry only to manage dependencies, add this block to the end of the `pyproject.toml` file:
 
 ```Ini, TOML
 [tool.poetry]
 package-mode = false
-In alternativa, puoi lanciare il comando di installazione usando il flag --no-root.
+alternatively, you can run the installation command using the --no-root flag.
 ```
 
-### Come avviare il Bot in locale
+### How to start the Bot locally
 
-Durante lo sviluppo, il bot richiede due terminali aperti: uno per il server FastAPI e uno per esporre la porta locale su internet tramite Ngrok.
+During development, the bot requires two open terminals: one for the FastAPI server and one to expose the local port to the internet via Ngrok.
 
-#### Terminale 1: Avvio del Server FastAPI
+#### Terminal 1: FastAPI server
 
 ```Bash
 poetry run uvicorn src.main:api_app --reload --port 3000
 ```
 
-#### Terminale 2: Avvio del Tunnel (Ngrok)
+#### Terminal 2: Tunnel start (Ngrok)
 
 ```Bash
 ngrok http 3000
 ```
 
-Copia l'URL generato da ngrok (es. `https://xxxx.ngrok-free.app`) e incollalo nella dashboard della tua App Slack sotto Event Subscriptions > Request URL, aggiungendo alla fine /slack/events.
+Copy the URL generated by ngrok (e.g., `[https://xxxx.ngrok-free.app](https://xxxx.ngrok-free.app)`) and paste it into your Slack App dashboard under Event Subscriptions > Request URL, appending `/slack/events` to the end.
 
-### ☁️ Architettura di Produzione (Deploy)
+### ☁️ Production architecture (Deploy)
 
-Il bot è stato strutturato per essere "Cloud-Native". Non avendo database locali, è ideale per essere ospitato su piattaforme PaaS (Platform as a Service) gratuite.
+The bot has been structured to be "Cloud-Native." Having no local databases, it is ideal for hosting on free PaaS (Platform as a Service) platforms.
 
-* **Hosting Consigliato:** Render.com o Koyeb.
+* **Suggested Hosting:** Render.com or Koyeb.
 
-* **Database:** Pinecone garantisce che la Knowledge Base non venga persa durante i riavvii effimeri dei container cloud.
+* **Database:** Pinecone ensures that the Knowledge Base is not lost during ephemeral cloud container restarts.
 
-* **Keep-Awake:** Per evitare che il piano gratuito vada in "sleep" (causando un timeout di Slack al risveglio), è consigliato l'uso di un servizio come cron-job.org per effettuare un ping all'indirizzo del bot ogni 10 minuti.
+* **Keep-Awake:** To prevent the free plan from going to "sleep" (causing a Slack timeout upon waking), it is recommended to use a service like cron-job.org to ping the bot's address every 10 minutes.
 
-### Come Collegare Slack (Temporaneo con Ngrok)
+### How to connect Slack (Temporary with Ngrok)
 
-#### Fase 1: Creare l'App (Il "Corpo" del Bot)
+#### Phase 1: Create the app
 
-1. Vai sul sito ufficiale per sviluppatori: `api.slack.com/apps` e fai il login con il tuo account Slack.
+1. Go to the official developer site: `[api.slack.com/apps](https://api.slack.com/apps)` and log in with your Slack account.
 
-2. Clicca sul bottone verde **"Create New App"**.
+2. Click the green **"Create New App"** button.
 
-3. Scegli **"From scratch"** (Da zero).
+3. Choose **"From scratch"**.
 
-4. Dai un nome al tuo bot (es. Knowledge Base Bot o Coda RAG).
+4. Give your bot a name (e.g., Knowledge Base Bot or Coda RAG).
 
-5. **Passaggio fondamentale:** Nel menu a tendina **"Pick a workspace"**, seleziona il tuo Workspace lavorativo.
+5. **Fundamental step:** In the **"Pick a workspace"** dropdown menu, select your work Workspace.
 
-6. Clicca su "Create App".
+6. Click "Create App".
 
-#### Fase 2: Dare i permessi al Bot (Gli "Scopes")
+#### Fase 2: Give Scopes to the bot
 
-Il bot appena nato è sordo e muto. Dobbiamo dirgli esplicitamente cosa può fare.
+1. In the left menu, click on "OAuth & Permissions".
 
-1. Nel menu a sinistra, clicca su "OAuth & Permissions".
+2. Scroll down to the "Scopes" section and look under "Bot Token Scopes".
 
-2. Scorri in basso fino alla sezione "Scopes" e guarda sotto "Bot Token Scopes".
+3. Click on "Add an OAuth Scope" and add these three fundamental permissions:
+    * `app_mentions:read` Allows the bot to hear when someone writes `@Bot`.
+    * `chat:write` Allows the bot to write and reply in the channel.
+    * `channels:read` Allows the bot to see which public channels it is in.
 
-3. Clicca su "Add an OAuth Scope" e aggiungi questi tre permessi fondamentali:
+#### Fase 3: Install it in the workspace and obtain tokens
 
-    * `app_mentions:read` Permette al bot di sentire quando qualcuno scrive `@Bot`.
+1. Scroll to the top of the same page ("OAuth & Permissions") and click the "Install to Workspace" button.
 
-    * `chat:write` Permette al bot di scrivere e rispondere nel canale
+2. Slack will ask you to confirm ("The app requests permission to access..."). Click "Allow".
+   Here is your first Token! You will see a string appear starting with `xoxb-... (Bot User OAuth Token)`. Copy it and paste it into your `.env` file on the `SLACK_BOT_TOKEN` line.
 
-    * `channels:read` Permette al bot di vedere in quali canali pubblici si trova
+3. To get the second secret, go to the left menu under "Basic Information".
+4. Scroll down to "App Credentials" and click Show next to "Signing Secret".
+5. Copy it and paste it into your .env file on the `SLACK_SIGNING_SECRET` line.
 
-#### Fase 3: Installarlo nel Workspace (Ottenere i Token)
+#### Fase 4: Management of Event Subscriptions
 
-Ora che ha i permessi, possiamo "assumerlo" in azienda.
 
-1. Scorri in cima alla stessa pagina ("OAuth & Permissions") e clicca sul bottone "Install to Workspace".
+1. Go to the "Event Subscriptions" menu on the left.
 
-2. Slack ti chiederà di confermare ("L'app richiede il permesso di accedere..."). Clicca su "Consenti" (Allow).
+2. Turn the "Enable Events" switch to On.
 
-    🎉 Ecco il tuo primo Token! Vedrai apparire una stringa che inizia con `xoxb-... (Bot User OAuth Token)`. Copiala e incollala nel tuo file `.env` alla riga `SLACK_BOT_TOKEN`.
+3. In the "Request URL" field, paste your ngrok URL and add `/slack/events` (e.g., `[https://1234-abcd.ngrok-free.app/slack/events](https://1234-abcd.ngrok-free.app/slack/events)`). Wait a second and the green "Verified" text should appear.
 
-3. Per prendere il secondo segreto, vai nel menu a sinistra su "Basic Information"
-4. Scorri fino a "App Credentials" e clicca su Show accanto a "Signing Secret". 
-5. Copialo e incollalo nel tuo file .env alla riga `SLACK_SIGNING_SECRET`.
+4. Scroll down to "Subscribe to bot events", click "Add Bot User Event", and add:
+* `app_mention`
 
-#### Fase 4: Collegare le orecchie (Event Subscriptions)
+5. Click the green "Save Changes" button at the bottom right. (Slack will ask you to click a yellow banner at the top to "reinstall your app" to apply the changes. Do so).
 
-Ora dobbiamo dire a Slack di mandare i messaggi al tuo computer tramite Ngrok. Assicurati che il tuo server FastAPI e ngrok siano accesi sul tuo PC.
-
-1. Vai nel menu a sinistra su "Event Subscriptions".
-
-2. Accendi l'interruttore "Enable Events" su On.
-
-3. Nel campo "Request URL", incolla l'URL di ngrok e aggiungi /slack/events (es. `https://1234-abcd.ngrok-free.app/slack/events`). Aspetta un secondo e dovrebbe apparire la scritta verde "Verified".
-
-4. Scorri in basso fino a "Subscribe to bot events", clicca su "Add Bot User Event" e aggiungi:
-
-    * `app_mention`
-
-5. Clicca sul bottone verde "Save Changes" in basso a destra. (Slack ti chiederà di cliccare su un banner giallo in alto "reinstall your app" per applicare le modifiche. Fallo).
-
-##### Il tocco finale (Su Slack)
+##### How to find the Bot on Slack once it got installed
 
 Ora il bot fa parte dell'azienda, ma non è ancora nelle stanze a chiacchierare!
 
-1. Apri la tua applicazione di Slack (o il sito web).
+1. Open your Slack application (or website).
 
-2. Vai nel canale dove vuoi fare i test (es. #general o creane uno nuovo chiamato #test-bot).
+2. Go to the channel where you want to perform the tests (e.g., #general or create a new one called #test-bot).
 
-3. Scrivi questo messaggio nel canale:
+3. Write this message in the channel:
 
-    >```text
-    >/invite @NomeDelTuoBot (sostituendo il nome con quello che gli hai dato).
-    >```
+```text
+/invite @NameOfYourBot (replacing the name with the one you gave it). 
+```
 
-    Slack aggiungerà il bot al canale.
 
-4. Ora scrivi:
+Slack will add the bot to the channel.
 
-    ```text
-    @NomeDelTuoBot Qual è il budget formativo per un dipendente part-time?
-   ```
+4. Now write:
+```text
+@NameOfYourBot What is the training budget for a part-time employee?
+```
 
-### Come Collegare Ngrok
+### How to connect Ngrok
 
 #### Passaggio 1: Accendi il Server del Bot (Terminale 1)
 
