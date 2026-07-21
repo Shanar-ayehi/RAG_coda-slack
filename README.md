@@ -195,115 +195,99 @@ Slack will add the bot to the channel.
 
 ### How to connect Ngrok
 
-#### Passaggio 1: Accendi il Server del Bot (Terminale 1)
+#### Step 1: Turn on the bot server (Terminal 1)
 
-Per prima cosa, dobbiamo accendere il tuo server web locale (FastAPI) in modo che sia pronto ad ascoltare.
+First thing fist, we must turn on the local webserver (FastAPI) so that it will e ready to listen.
 
-1. Apri un terminale nella cartella del tuo progetto.
+1. Open a terminal in your project folder.
 
-2. Lancia il server su una porta specifica (usiamo la 3000):
+2. run the server on a specific port (3000 for example):
 
     ```Bash
     poetry run uvicorn src.main:api_app --reload --port 3000
     ```
 
-> *Se vedi la scritta Application startup complete, il tuo bot è sveglio e in ascolto. Lascia questa finestra aperta.*
+> *if you see "Application startup complete", your bot is on and listening. Leave such window open.*
 
-#### Passaggio 2: Apri il Tunnel Ngrok (Terminale 2)
+#### Step 2: Open the Ngrok tunnel (Terminal 2)
 
-Ora dobbiamo prendere quella porta 3000 e "lanciarla" su internet.
+Now we need to take that port 3000 and "launch" it onto the internet.
 
-1. Apri una nuova finestra del terminale (non chiudere l'altra).
+1. Open a new terminal window (do not close the other one).
 
-2. Lancia il comando per avviare ngrok sulla stessa porta:
+2. Run the command to start ngrok on the same port:
 
     ```Bash
     ngrok http 3000
     ```
 
-3. Il terminale cambierà schermata. Cerca la riga che inizia con Forwarding e copia l'URL sicuro (https). Sarà qualcosa di simile a: `https://123a-456b.ngrok-free.app`.
+3. The terminal will change screen. Look for the line starting with Forwarding and copy the secure URL (https). It will look something like: `https://123a-456b.ngrok-free.app`.
 
-> :memo: ***Nota importante:** nei piani gratuiti, ogni volta che spegni e riaccendi ngrok, questo URL cambia!*
+> :memo: ***Important note:** on free plans, every time you turn ngrok off and on again, this URL changes!*
 
-#### Passaggio 3: Diciamo a Slack dove trovarti
+#### Step 3: Address in Slack
 
-Ora andiamo ad incollare questo nuovo indirizzo nella dashboard di Slack.
+Now let's paste this new address into the Slack dashboard.
 
-1. Vai su `api.slack.com/apps` e clicca sul tuo bot.
+1. Go on `api.slack.com/apps` and click on your bot.
 
-2. Nel menu a sinistra, vai su **"Event Subscriptions"**.
+2. In the menu on the left, go in **"Event Subscriptions"**.
 
-3. Alla voce **"Request URL"**, incolla l'indirizzo che hai copiato da ngrok e aggiungi alla fine l'endpoint che abbiamo scritto nel codice, ovvero `/slack/events`.
-Esempio esatto: `https://123a-456b.ngrok-free.app/slack/events`
+3. Under **"Request URL"**, paste the address you copied from ngrok and add the endpoint we wrote in the code at the end, which is `/slack/events`..
+Correct example: `https://123a-456b.ngrok-free.app/slack/events`
 
-4. Appena lo incolli, Slack manderà un "ping" invisibile per testarlo. Se tutto è acceso, vedrai apparire una bellissima scritta verde <font color="green">*"Verified"*</font>!
+4. As soon as you paste it, Slack will send an invisible "ping" to test it. If everything is up and running, you will see a wonderful green <font color="green">*"Verified"*</font> text appear!
 
-5. Clicca su **"Save Changes"** in basso a destra (se ti chiede di reinstallare l'app con un banner giallo in alto, fallo).
+5. Click on **"Save Changes"** at the bottom right (if it asks you to reinstall the app with a yellow banner at the top, do so).
 
-6. È il momento della verità!
-Se vedi la spunta verde <font color="green">*"Verified"*</font>, significa che Slack e il tuo computer stanno comunicando perfettamente.
+6. It's the moment of the truth!
+If you see the green tick <font color="green">*"Verified"*</font>, it means that your PC and Slack are communicating perfectly.
 
-7. Apri il tuo Slack aziendale, vai nel canale dove hai invitato il bot e scrivigli:
-*@NomeDelTuoBot* Qual è il budget formativo per un dipendente part-time?
+7. Open your company Slack, go to the channel where you invited the bot, and write to it:
+*@NameOfYourBot* What is the training budget for a part-time employee?
 
-    Se tutto è andato a buon fine:
+If everything went well:
 
-    * Il bot risponderà istantaneamente con "Sto consultando la Knowledge Base su Pinecone... ☁️⏳".
+    * The bot will instantly reply with "I'm consulting the Knowledge Base on Pinecone... ☁️⏳".
+    *  Behind the scenes, it will query Pinecone and Cohere.
+    * A few seconds later, it will write the correct answer ("250€ per year").
 
-    * Dietro le quinte, interrogherà Pinecone e Cohere.
+### 🚀 Deploy on Render (Production)
 
-    * Pochi secondi dopo ti scriverà la risposta corretta ("250€ all'anno").
+Ngrok is perfect for local testing, but to put the bot into production 24/7 you need to move it to a cloud server.
 
-Proviamo? Fammi sapere se ti dà "Verified" e come va il test su Slack!
-
-### 🚀 Deploy Definitivo su Render (Produzione)
-
-Ngrok è perfetto per il test locale, ma per mettere il bot in produzione 24/7 devi spostarlo su un server cloud.
-
-1. **Push su GitHub:** Carica tutto il codice su un repository GitHub privato (assicurati che il file .env sia ignorato dal .gitignore!).
-
-2. **Crea il Web Service:** Vai su Render.com, crea un nuovo "Web Service" e collegalo alla tua repo.
-
-3. **Configurazione:**
-
+1. **Push on Github:** Upload all code to a private GitHub repository (make sure the `.env` file is ignored by `.gitignore`!).
+2. **Create the Web Service:** Go to Render.com, create a new "Web Service", and connect it to your repo.
+3. **Configuration:**
     * **Runtime:** `Python 3`
-
-    * **Build Command:** `pip install poetry && poetry install --without dev --no-root`
-
+    * **Build Command:** `pip install poetry && poetry install --without dev --no root`
     * **Start Command:** `poetry run uvicorn src.main:api_app --host 0.0.0.0 --port $PORT`
 
-4. **Variabili d'Ambiente:** Nella scheda Environment Variables di Render, copia e incolla tutte le chiavi che hai nel tuo `.env` locale. Aggiungi anche una variabile `PYTHON_VERSION` impostata su `3.12.x` per allinearla al tuo `pyproject.toml`.
 
-5. **Aggiornamento Slack:** Una volta completato il deploy, copia il nuovo URL fornito da Render (es. `https://tuo-bot.onrender.com`). Vai nella dashboard di Slack alla voce Event Subscriptions e sostituisci il vecchio link di Ngrok con `https://tuo-bot.onrender.com/slack/events.`
+4. **Environment Variables:** In the Environment Variables tab on Render, copy and paste all the keys you have in your local `.env`. Also add a `PYTHON_VERSION` variable set to `3.12.x` to align it with your `pyproject.toml`.
+5. **Slack Update:** Once the deployment is complete, copy the new URL provided by Render (e.g., `[https://tuo-bot.onrender.com](https://tuo-bot.onrender.com)`). Go to the Slack dashboard under Event Subscriptions and replace the old Ngrok link with `[https://tuo-bot.onrender.com/slack/events](https://tuo-bot.onrender.com/slack/events)`.
 
-## Ottimizzazioni
+### Automatic Knowledge Base Synchronization (Coda Webhook)
 
-### 🔄 Sincronizzazione Automatica della Knowledge Base (Coda Webhook)
+To avoid launching manual updates from the terminal, you can instruct Coda to send a signal to the bot whenever the HR documents are updated.
 
-Per evitare di lanciare l'aggiornamento manuale dal terminale, puoi istruire Coda ad inviare un segnale al bot ogni volta che i documenti HR vengono aggiornati.
+1. Open your document on Coda.
+2. Insert the official **"Webhooks"** Pack.
+3. Create an **Automation** (e.g., time-based "Every day at 02:00" or triggered by a button).
+4. Choose the **Post to URL** action and enter your Render bot's URL with the dedicated route:
+👉 `[https://tuo-bot.onrender.com/coda-update](https://tuo-bot.onrender.com/coda-update)`
 
-1. Apri il tuo documento su Coda.
+As soon as the automation triggers, the bot will automatically empty the Pinecone vector database and reload the updated Markdown fragments.
 
-2. Inserisci il Pack ufficiale **"Webhooks"**.
+### Server Sleep Prevention (Keep-Awake for Slack)
 
-3. Crea un'**Automation** (es. basata sul tempo "Ogni giorno alle 02:00" oppure attivata da un bottone).
+Free hosting plans like Render go to "sleep" after 15 minutes of inactivity to save resources. If the bot is asleep, it takes about 50 seconds to wake up on the first message of the morning. Slack, having a strict 3-second timeout, will return an error to the employee.
 
-4. Scegli l'azione **Post to URL** e inserisci l'URL del tuo bot Render con la rotta dedicata:
-👉 `https://tuo-bot.onrender.com/coda-update`
+To permanently resolve the issue:
 
-Non appena l'automazione scatterà, il bot svuoterà autonomamente il database vettoriale Pinecone e ricaricherà i frammenti Markdown aggiornati.
+1. Create a free account on **cron-job.org**.
+2. Create a new Cronjob that makes a call every 10 minutes.
+3. Point the URL to your bot's automatic documentation page:
+👉 `[https://tuo-bot.onrender.com/docs](https://tuo-bot.onrender.com/docs)`
 
-### ☕ Evitare il Letargo del Server (Keep-Awake per Slack)
-
-I piani gratuiti di hosting come Render vanno in "sleep" dopo 15 minuti di inattività per risparmiare risorse. Se il bot dorme, ci metterà circa 50 secondi a riaccendersi al primo messaggio del mattino. Slack, avendo un timeout severo di 3 secondi, darà errore al dipendente.
-
-Per risolvere definitivamente il problema:
-
-1. Crea un account gratuito su **cron-job.org**.
-
-2. Crea un nuovo Cronjob che effettui una chiamata ogni 10 minuti.
-
-3. Punta l'URL alla pagina della documentazione automatica del tuo bot:
-👉 `https://tuo-bot.onrender.com/docs`
-
-Questa pagina risponde sempre con un `200 OK` senza appesantire il server. Il traffico simulato ingannerà Render, mantenendo il bot sveglio, reattivo e pronto a rispondere in tempo reale.
+This page always responds with a `200 OK` without burdening the server. The simulated traffic will trick Render, keeping the bot awake, responsive, and ready to reply in real time.
